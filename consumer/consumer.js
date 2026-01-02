@@ -1,23 +1,31 @@
-const { Kafka } = require("kafkajs");
-const log4js = require("log4js");
+const kafka = require('kafka-node');
+const log4js = require('log4js');
 
+// Configure log4js
 log4js.configure({
-  appenders: { out: { type: "stdout", layout: { type: "json" } } },
-  categories: { default: { appenders: ["out"], level: "info" } }
+  appenders: { out: { type: 'console', layout: { type: 'json' } } },
+  categories: { default: { appenders: ['out'], level: 'info' } }
+});
+const logger = log4js.getLogger('consumer');
+
+// Kafka setup
+const Consumer = kafka.Consumer;
+const client = new kafka.KafkaClient({ kafkaHost: 'kafka:9092' });
+const consumer = new Consumer(
+  client,
+  [{ topic: 'tidb-cdc', partition: 0 }],
+  { autoCommit: true }
+);
+
+// Consume messages
+consumer.on('message', function(message) {
+  logger.info({
+    timestamp: new Date().toISOString(),
+    action: 'db_change',
+    message: message.value
+  });
 });
 
-const logger = log4js.getLogger();
-
-const kafka = new Kafka({ brokers: ["kafka:9092"] });
-const consumer = kafka.consumer({ groupId: "cdc-group" });
-
-(async () => {
-  await consumer.connect();
-  await consumer.subscribe({ topic: "tidb-cdc", fromBeginning: true });
-
-  await consumer.run({
-    eachMessage: async ({ message }) => {
-      logger.info(JSON.parse(message.value.toString()));
-    }
-  });
-})();
+consumer.on('error', function(err) {
+  logger.error({ timestamp: new Date().toISOString(), error: err });
+});
