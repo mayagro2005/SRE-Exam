@@ -17,7 +17,8 @@ services:
       - kafka
     volumes:
       - ./ticdc-entrypoint.sh:/ticdc-entrypoint.sh
-    entrypoint: ["sh", "/ticdc-entrypoint.sh"]
+    entrypoint: ["sh", "-c", "chmod +x /ticdc-entrypoint.sh && /ticdc-entrypoint.sh"]
+
 
 
 
