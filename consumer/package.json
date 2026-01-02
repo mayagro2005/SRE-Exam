@@ -1,13 +1,12 @@
 {
   "name": "consumer",
   "version": "1.0.0",
-  "description": "TiDB CDC Kafka consumer",
   "main": "consumer.js",
+  "dependencies": {
+    "kafka-node": "^5.0.0",
+    "log4js": "^6.9.1"
+  },
   "scripts": {
     "start": "node consumer.js"
-  },
-  "dependencies": {
-    "kafkajs": "^2.2.4",
-    "log4js": "^6.9.1"
   }
 }

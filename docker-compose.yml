@@ -1,8 +1,9 @@
-
+version: "3.9"
 
 services:
   tidb:
     image: pingcap/tidb:nightly
+    container_name: tidb
     ports:
       - "4000:4000"
     volumes:
@@ -10,30 +11,43 @@ services:
 
   ticdc:
     image: pingcap/ticdc:nightly
+    container_name: ticdc
     depends_on:
       - tidb
       - kafka
-    command: >
-      sh -c "
-      sleep 10 &&
-      cdc cli changefeed create
-      --server=http://ticdc:8300
-      --sink-uri='kafka://kafka:9092/tidb-cdc'
-      "
+    volumes:
+      - ./ticdc-entrypoint.sh:/ticdc-entrypoint.sh
+    entrypoint: ["sh", "-c", "chmod +x /ticdc-entrypoint.sh && /ticdc-entrypoint.sh"]
+    ports:
+      - "8300:8300"
+
+
+
+
 
   zookeeper:
     image: wurstmeister/zookeeper:latest
+    container_name: zookeeper
     environment:
       ALLOW_ANONYMOUS_LOGIN: "yes"
+    ports:
+      - "2181:2181"
 
   kafka:
     image: wurstmeister/kafka:latest
+    container_name: kafka
+    depends_on:
+      - zookeeper
     environment:
       KAFKA_CFG_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_CFG_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092
       ALLOW_PLAINTEXT_LISTENER: "yes"
+    ports:
+      - "9092:9092"
 
   backend:
     build: ./backend
+    container_name: backend
     depends_on:
       - tidb
     ports:
@@ -41,10 +55,13 @@ services:
 
   frontend:
     build: ./frontend
+    container_name: frontend
     ports:
       - "8080:80"
 
   consumer:
     build: ./consumer
+    container_name: consumer
     depends_on:
       - kafka
+    command: npm start

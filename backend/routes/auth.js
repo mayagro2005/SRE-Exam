@@ -9,31 +9,50 @@ const router = express.Router();
 router.post("/login", async (req, res) => {
   const { username, password } = req.body;
 
-  const [rows] = await db.query(
-    "SELECT * FROM users WHERE username = ?",
-    [username]
-  );
+  if (!username || !password) {
+    return res.status(400).json({ error: "Username and password required" });
+  }
 
-  if (!rows.length) return res.status(401).end();
+  try {
+    // 1️⃣ Fetch user from database
+    const [rows] = await db.query(
+      "SELECT * FROM users WHERE username = ?",
+      [username]
+    );
 
-  const user = rows[0];
+    if (!rows.length) {
+      return res.status(401).json({ error: "Invalid credentials" });
+    }
 
-  // password check skipped for simplicity
-  const token = uuid();
+    const user = rows[0];
 
-  await db.query(
-    "INSERT INTO sessions (user_id, token) VALUES (?, ?)",
-    [user.id, token]
-  );
+    // 2️⃣ Verify password using bcrypt
+    const passwordValid = await bcrypt.compare(password, user.password_hash);
+    if (!passwordValid) {
+      return res.status(401).json({ error: "Invalid credentials" });
+    }
 
-  logger.info({
-    timestamp: new Date().toISOString(),
-    userId: user.id,
-    action: "LOGIN",
-    ip: req.ip
-  });
+    // 3️⃣ Generate a token and store it in the database
+    const token = uuid();
+    await db.query(
+      "INSERT INTO sessions (user_id, token) VALUES (?, ?)",
+      [user.id, token]
+    );
 
-  res.json({ token });
+    // 4️⃣ Log the login event
+    logger.info({
+      timestamp: new Date().toISOString(),
+      userId: user.id,
+      action: "LOGIN",
+      ip: req.ip,
+    });
+
+    // 5️⃣ Return the token to the client
+    res.json({ token });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Internal server error" });
+  }
 });
 
 module.exports = router;

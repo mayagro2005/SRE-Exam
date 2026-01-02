@@ -1,10 +1,12 @@
-FROM node:16
-
+FROM node:18
 WORKDIR /app
 
-COPY package*.json ./
+# Copy package.json and install dependencies
+COPY package.json .
 RUN npm install
 
+# Copy rest of the code
 COPY . .
 
-CMD ["node", "consumer.js"]
+# Start the consumer
+CMD ["npm", "start"]
