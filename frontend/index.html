@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html>
+<body>
+  <form id="login">
+    <input id="user" placeholder="username" />
+    <input id="pass" placeholder="password" type="password" />
+    <button>Login</button>
+  </form>
+
+  <script>
+    document.getElementById("login").onsubmit = async (e) => {
+      e.preventDefault();
+      const res = await fetch("http://localhost:3000/auth/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          username: user.value,
+          password: pass.value
+        })
+      });
+      console.log(await res.json());
+    };
+  </script>
+</body>
+</html>

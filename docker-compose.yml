@@ -1,0 +1,60 @@
+
+services:
+  tidb:
+    image: pingcap/tidb:latest
+    ports:
+      - "4000:4000"
+    volumes:
+      - ./db:/docker-entrypoint-initdb.d
+
+  ticdc:
+    image: pingcap/ticdc:7.5.0
+    depends_on:
+      - tidb
+      - kafka
+    ports:
+      - "8300:8300"
+    entrypoint: [
+      "sh", "-c",
+      "sleep 20 && cdc cli changefeed create --server=http://ticdc:8300 --sink-uri='kafka://kafka:9092/tidb-cdc'"
+    ]
+
+
+
+
+  zookeeper:
+    image: bitnami/zookeeper:3.9
+    environment:
+      ALLOW_ANONYMOUS_LOGIN: "yes"
+    ports:
+      - "2181:2181"
+
+  kafka:
+    image: bitnami/kafka:3.6
+    depends_on:
+      - zookeeper
+    environment:
+      KAFKA_CFG_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_CFG_LISTENERS: PLAINTEXT://:9092
+      KAFKA_CFG_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092
+      ALLOW_PLAINTEXT_LISTENER: "yes"
+    ports:
+      - "9092:9092"
+
+
+  backend:
+    build: ./backend
+    depends_on:
+      - tidb
+    ports:
+      - "3000:3000"
+
+  frontend:
+    build: ./frontend
+    ports:
+      - "8080:80"
+
+  consumer:
+    build: ./consumer
+    depends_on:
+      - kafka
