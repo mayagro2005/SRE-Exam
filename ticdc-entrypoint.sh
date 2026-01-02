@@ -1,13 +1,13 @@
 #!/bin/sh
 set -e
 
-# Start TiCDC server in the background
-/cdc server &
+# Start TiCDC server in background
+/cdc/cdc server &
 
-# Wait a bit for server to start
+# Wait for server to be ready
 sleep 10
 
-# Create the changefeed (correct CLI syntax)
+# Create the changefeed
 /cdc changefeed create \
     --pd=http://tidb:2379 \
     --sink-uri="kafka://kafka:9092/tidb-cdc"

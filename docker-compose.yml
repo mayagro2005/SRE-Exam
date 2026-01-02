@@ -17,9 +17,8 @@ services:
       - kafka
     volumes:
       - ./ticdc-entrypoint.sh:/ticdc-entrypoint.sh
-    entrypoint: ["sh", "-c", "chmod +x /ticdc-entrypoint.sh && /ticdc-entrypoint.sh"]
-    ports:
-      - "8300:8300"
+    entrypoint: ["sh", "/ticdc-entrypoint.sh"]
+
 
 
 
