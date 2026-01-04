@@ -19,7 +19,13 @@ sleep 3
 echo "Creating changefeed..."
 curl -X POST http://ticdc:8300/api/v2/changefeeds \
   -H "Content-Type: application/json" \
-  -d '{"changefeed_id":"tidb-cdc","sink_uri":"kafka://kafka:9092/tidb-cdc?protocol=canal-json"}' || true
+  -d '{
+    "changefeed_id": "tidb-cdc",
+    "sink_uri": "kafka://kafka:9092/tidb-cdc?protocol=canal-json",
+    "filter": {
+      "rules": ["appdb.*"]
+    }
+  }' || true
 
 echo "Changefeed creation attempted."
 
