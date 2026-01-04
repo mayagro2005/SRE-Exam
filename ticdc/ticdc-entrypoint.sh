@@ -9,14 +9,25 @@ set -e
 
 echo "Waiting for TiCDC API to be ready..."
 until curl -s http://ticdc:8300/api/v2/status > /dev/null; do
+  echo "TiCDC not ready yet..."
   sleep 2
 done
 echo "TiCDC API is ready!"
 
+echo "Waiting for TiKV to be ready..."
+until curl -s http://pd0:2379/pd/api/v1/stores | grep '"state_name":"Up"' > /dev/null; do
+  echo "TiKV not ready yet..."
+  sleep 2
+done
+echo "TiKV is ready!"
+
 echo "Waiting extra 3 seconds for TiCDC to stabilize..."
 sleep 3
 
-echo "Creating changefeed..."
+echo "Deleting old changefeed if exists..."
+curl -X DELETE http://ticdc:8300/api/v2/changefeeds/tidb-cdc || true
+
+echo "Creating fresh changefeed..."
 curl -X POST http://ticdc:8300/api/v2/changefeeds \
   -H "Content-Type: application/json" \
   -d '{
@@ -27,7 +38,7 @@ curl -X POST http://ticdc:8300/api/v2/changefeeds \
     }
   }' || true
 
-echo "Changefeed creation attempted."
+echo "Changefeed recreated successfully."
 
-# Keep container alive so CDC keeps running
+# Keep container alive
 sleep infinity

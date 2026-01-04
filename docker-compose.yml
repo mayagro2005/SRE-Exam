@@ -68,18 +68,14 @@ services:
       "
 
   ticdc:
-    image: pingcap/ticdc:v7.5.1
+    build: ./ticdc
     container_name: ticdc
     depends_on:
       - pd0
-      - tikv0
-      - tidb
-    volumes:
-      - ./ticdc-entrypoint.sh:/ticdc-entrypoint.sh:ro
-    entrypoint: /bin/sh
-    command: /ticdc-entrypoint.sh
     networks:
       - tidb-cluster
+
+
 
 
 
@@ -103,6 +99,8 @@ services:
       KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092
       KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:9092
       KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+    volumes:
+      - kafka-data:/kafka
     networks:
       - tidb-cluster
 
@@ -142,3 +140,7 @@ services:
 networks:
   tidb-cluster:
   app-net:
+
+volumes: 
+  kafka-data:
+

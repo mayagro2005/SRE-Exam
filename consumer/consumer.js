@@ -1,4 +1,4 @@
-const kafka = require('kafka-node');
+const { Kafka } = require('kafkajs');
 const log4js = require('log4js');
 
 // Configure log4js
@@ -8,64 +8,59 @@ log4js.configure({
 });
 const logger = log4js.getLogger('consumer');
 
-// Wait until topic exists
-async function waitForTopic(client, topic) {
-  return new Promise((resolve) => {
-    const check = () => {
-      client.loadMetadataForTopics([topic], (err, resp) => {
-        if (!err && resp) {
-          logger.info({
-            timestamp: new Date().toISOString(),
-            action: 'topic_ready',
-            topic
-          });
-          return resolve();
-        }
+async function waitForTopic(kafka, topic) {
+  const admin = kafka.admin();
+  await admin.connect();
 
-        logger.info({
-          timestamp: new Date().toISOString(),
-          action: 'waiting_for_topic',
-          topic
-        });
-
-        setTimeout(check, 2000);
+  while (true) {
+    const topics = await admin.listTopics();
+    if (topics.includes(topic)) {
+      logger.info({
+        timestamp: new Date().toISOString(),
+        action: 'topic_ready',
+        topic
       });
-    };
+      await admin.disconnect();
+      return;
+    }
 
-    check();
-  });
-}
-
-async function startConsumer() {
-  const client = new kafka.KafkaClient({ kafkaHost: 'kafka:9092' });
-
-  // Wait until TiCDC creates the topic
-  await waitForTopic(client, 'tidb-cdc');
-
-  const Consumer = kafka.Consumer;
-  const consumer = new Consumer(
-    client,
-    [{ topic: 'tidb-cdc', partition: 0 }],
-    { autoCommit: true }
-  );
-
-  consumer.on('message', function (message) {
     logger.info({
       timestamp: new Date().toISOString(),
-      action: 'db_change',
-      message: message.value
+      action: 'waiting_for_topic',
+      topic
     });
+
+    await new Promise(res => setTimeout(res, 2000));
+  }
+}
+
+async function start() {
+  const kafka = new Kafka({
+    clientId: 'cdc-consumer',
+    brokers: ['kafka:9092']
   });
 
-  consumer.on('error', function (err) {
-    logger.error({
-      timestamp: new Date().toISOString(),
-      error: err.toString()
-    });
+  const topic = 'tidb-cdc';
+
+  // Wait until topic exists
+  await waitForTopic(kafka, topic);
+
+  const consumer = kafka.consumer({ groupId: 'cdc-group' });
+  await consumer.connect();
+  await consumer.subscribe({ topic, fromBeginning: true });
+
+  await consumer.run({
+    eachMessage: async ({ message }) => {
+      logger.info({
+        timestamp: new Date().toISOString(),
+        action: 'db_change',
+        message: message.value.toString()
+      });
+    }
   });
 }
 
-startConsumer().catch(err => {
+start().catch(err => {
   logger.error({
     timestamp: new Date().toISOString(),
     error: err.toString()
