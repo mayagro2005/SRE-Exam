@@ -75,9 +75,8 @@ services:
     entrypoint: ["/ticdc-entrypoint.sh"]
     networks:
       - tidb-cluster
-
-
-
+    ports: 
+      - "8300:8300"
 
 
   zookeeper:
@@ -100,6 +99,7 @@ services:
       KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092
       KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:9092
       KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
     volumes:
       - kafka-data:/kafka
     networks:

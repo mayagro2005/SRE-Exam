@@ -36,7 +36,9 @@ curl -X POST http://ticdc:8300/api/v2/changefeeds \
   -d '{
         "changefeed_id": "tidb-cdc",
         "sink_uri": "kafka://kafka:9092/tidb-cdc?protocol=canal-json",
-        "rules": ["appdb.*"]
+        "filter": {
+          "rules": ["appdb.*"]
+        }
       }'
 
 echo "Changefeed recreated successfully."
