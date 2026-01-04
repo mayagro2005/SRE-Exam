@@ -2,7 +2,7 @@ version: "3.9"
 
 services:
   pd0:
-    image: pingcap/pd:latest
+    image: pingcap/pd:v7.5.1
     container_name: pd0
     ports:
       - "2379:2379"
@@ -20,7 +20,7 @@ services:
       - tidb-cluster
 
   tikv0:
-    image: pingcap/tikv:latest
+    image: pingcap/tikv:v7.5.1
     container_name: tikv0
     depends_on:
       - pd0
@@ -54,7 +54,7 @@ services:
 
 
   tidb:
-    image: pingcap/tidb:nightly
+    image: pingcap/tidb:v7.5.1
     container_name: tidb
     depends_on:
       - pd0
@@ -67,14 +67,16 @@ services:
       - tidb-cluster
 
   ticdc:
-    image: pingcap/ticdc:nightly
+    image: pingcap/ticdc:v7.5.1
     container_name: ticdc
     depends_on:
       - pd0
       - tidb
     volumes:
-      - ./ticdc-entrypoint.sh:/ticdc-entrypoint.sh
-    entrypoint: ["sh", "/ticdc-entrypoint.sh"]
+      - ./ticdc-entrypoint.sh:/ticdc-entrypoint.sh:ro
+    entrypoint:
+      - sh
+      - /ticdc-entrypoint.sh
     networks:
       - tidb-cluster
 
