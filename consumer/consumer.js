@@ -3,8 +3,8 @@ const log4js = require('log4js');
 
 // Configure log4js
 log4js.configure({
-  appenders: { out: { type: 'console', layout: { type: 'json' } } },
-  categories: { default: { appenders: ['out'], level: 'info' } }
+  appenders: { out: { type: "stdout" } },
+  categories: { default: { appenders: ["out"], level: "info" } }
 });
 const logger = log4js.getLogger('consumer');
 

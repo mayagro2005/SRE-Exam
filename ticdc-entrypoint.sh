@@ -1,19 +1,21 @@
 #!/bin/sh
 set -e
 
-# Start TiCDC server in background
-/cdc server &
+# Start TiCDC server with correct PD address
+/cdc server \
+  --pd=http://pd0:2379 \
+  --addr=0.0.0.0:8300 \
+  --advertise-addr=ticdc:8300 &
 
 # Wait for server to start
 sleep 10
 
-# Create the changefeed (correct CLI for nightly)
-# Only create if it doesn't exist
-if ! /cdc changefeed list | grep -q tidb-cdc; then
-    /cdc changefeed create \
-        --pd=http://tidb:2379 \
-        --sink-uri="kafka://kafka:9092/tidb-cdc"
-fi
+# Create changefeed via REST API (idempotent)
+curl -X POST http://ticdc:8300/api/v2/changefeeds \
+  -H "Content-Type: application/json" \
+  -d '{
+        "changefeed_id": "tidb-cdc",
+        "sink_uri": "kafka://kafka:9092/tidb-cdc?protocol=canal-json"
+      }' || true
 
-# Keep container running
 wait

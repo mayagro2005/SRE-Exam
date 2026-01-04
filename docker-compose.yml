@@ -1,63 +1,131 @@
 version: "3.9"
 
 services:
+  pd0:
+    image: pingcap/pd:latest
+    container_name: pd0
+    ports:
+      - "2379:2379"
+      - "2380:2380"
+    volumes:
+      - ./pd-data:/pd/data
+    command:
+      - --name=pd0
+      - --client-urls=http://0.0.0.0:2379
+      - --peer-urls=http://0.0.0.0:2380
+      - --advertise-client-urls=http://pd0:2379
+      - --advertise-peer-urls=http://pd0:2380
+      - --initial-cluster=pd0=http://pd0:2380
+    networks:
+      - tidb-cluster
+
+  tikv0:
+    image: pingcap/tikv:latest
+    container_name: tikv0
+    depends_on:
+      - pd0
+    ports:
+      - "20160:20160"
+    volumes:
+      - ./tikv-data:/tikv/data
+    command:
+      - --pd=pd0:2379
+    networks:
+      - tidb-cluster
+
+  db-init:
+    image: mysql:8
+    depends_on:
+      - tidb
+    networks:
+      - tidb-cluster
+    volumes:
+      - ./db/schema.sql:/schema.sql
+      - ./db/seed.sql:/seed.sql
+    command: >
+      sh -c "
+      until mysql -h tidb -P 4000 -u root -e 'SELECT 1'; do
+        echo 'Waiting for TiDB...';
+        sleep 2;
+      done;
+      mysql -h tidb -P 4000 -u root < /schema.sql;
+      mysql -h tidb -P 4000 -u root < /seed.sql;
+      "
+
+
   tidb:
     image: pingcap/tidb:nightly
     container_name: tidb
+    depends_on:
+      - pd0
+      - tikv0
     ports:
       - "4000:4000"
     volumes:
       - ./db:/docker-entrypoint-initdb.d
+    networks:
+      - tidb-cluster
 
   ticdc:
     image: pingcap/ticdc:nightly
     container_name: ticdc
     depends_on:
+      - pd0
       - tidb
-      - kafka
     volumes:
       - ./ticdc-entrypoint.sh:/ticdc-entrypoint.sh
-    entrypoint: ["sh", "-c", "chmod +x /ticdc-entrypoint.sh && /ticdc-entrypoint.sh"]
-
-
-
-
+    entrypoint: ["sh", "/ticdc-entrypoint.sh"]
+    networks:
+      - tidb-cluster
 
 
 
   zookeeper:
     image: wurstmeister/zookeeper:latest
     container_name: zookeeper
-    environment:
-      ALLOW_ANONYMOUS_LOGIN: "yes"
     ports:
       - "2181:2181"
+    networks:
+      - tidb-cluster
 
   kafka:
     image: wurstmeister/kafka:latest
     container_name: kafka
     depends_on:
       - zookeeper
-    environment:
-      KAFKA_CFG_ZOOKEEPER_CONNECT: zookeeper:2181
-      KAFKA_CFG_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092
-      ALLOW_PLAINTEXT_LISTENER: "yes"
     ports:
       - "9092:9092"
+    environment:
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092
+      KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:9092
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+    networks:
+      - tidb-cluster
+
 
   backend:
     build: ./backend
     container_name: backend
     depends_on:
+      - db-init
       - tidb
+      - kafka
     ports:
       - "3000:3000"
+    networks:
+      - app-net
+      - tidb-cluster   # backend needs to reach TiDB
 
   frontend:
     build: ./frontend
     container_name: frontend
+    depends_on:
+      - backend
     ports:
       - "8080:80"
+    networks:
+      - app-net
 
   consumer:
     build: ./consumer
@@ -65,3 +133,10 @@ services:
     depends_on:
       - kafka
     command: npm start
+    networks:
+        - app-net
+        - tidb-cluster  
+
+networks:
+  tidb-cluster:
+  app-net:
