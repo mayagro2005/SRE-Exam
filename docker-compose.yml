@@ -26,16 +26,16 @@ services:
       - pd0
     ports:
       - "20160:20160"
-    volumes:
-      - ./tikv-data:/tikv/data
     command:
       - --pd=pd0:2379
       - --addr=0.0.0.0:20160
       - --advertise-addr=tikv0:20160
       - --status-addr=0.0.0.0:20180
       - --advertise-status-addr=tikv0:20180
+      - --data-dir=/tikv
     networks:
       - tidb-cluster
+
 
   tidb:
     image: pingcap/tidb:v7.5.1

@@ -14,15 +14,12 @@ until curl -s http://ticdc:8300/api/v2/status > /dev/null; do
 done
 echo "TiCDC API is ready!"
 
-echo "Waiting for TiKV to be ready..."
-until curl -s http://pd0:2379/pd/api/v1/stores | grep '"state_name":"Up"' > /dev/null; do
-  echo "TiKV not ready yet..."
+echo "Waiting for appdb.users table to exist..."
+until mysql -h tidb -P 4000 -u root -e "SELECT 1 FROM appdb.users LIMIT 1;" >/dev/null 2>&1; do
+  echo "Table not ready yet..."
   sleep 2
 done
-echo "TiKV is ready!"
-
-echo "Waiting extra 3 seconds for TiCDC to stabilize..."
-sleep 3
+echo "Table is ready!"
 
 echo "Deleting old changefeed if exists..."
 curl -X DELETE http://ticdc:8300/api/v2/changefeeds/tidb-cdc || true
@@ -40,5 +37,4 @@ curl -X POST http://ticdc:8300/api/v2/changefeeds \
 
 echo "Changefeed recreated successfully."
 
-# Keep container alive
 sleep infinity
