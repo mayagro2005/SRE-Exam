@@ -51,3 +51,5 @@ git clone <repo_url>
 cd project-root
 docker-compose up --build
 
+Note: If you edit any shell scripts (e.g., ticdc-entrypoint.sh) on Windows, make sure they are saved with LF line endings to ensure proper execution inside Docker containers.
+
